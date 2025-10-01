@@ -1,0 +1,16 @@
+   # Binaries
+   otelcol-databricks/
+   
+   # Configs with secrets
+   config.yaml
+   
+   # Go
+   vendor/
+   *.test
+   
+   # IDE
+   .vscode/
+   .idea/
+   
+   # OS
+   .DS_Store
