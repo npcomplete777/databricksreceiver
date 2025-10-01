@@ -1,0 +1,42 @@
+receivers:
+  databricks:
+    host: "https://YOUR_WORKSPACE.cloud.databricks.com"
+    token: "YOUR_DATABRICKS_TOKEN_HERE"
+    collection_interval: "60s"
+    
+    # Cost calculation settings
+    cloud_provider: "azure"  # Options: "azure", "aws", "gcp"
+    dbu_price_per_unit: 0.15  # Price per DBU in USD
+    
+    # Override default DBU rates for specific node types
+    node_type_dbu_rates:
+      Standard_DS3_v2: 0.75
+      Standard_DS4_v2: 1.50
+      Standard_E8s_v3: 2.00
+      # Add your specific node types here
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 100
+
+exporters:
+  otlphttp/dynatrace:
+    endpoint: "https://YOUR_ENV.live.dynatrace.com/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token YOUR_DYNATRACE_API_TOKEN_HERE
+  
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 100
+
+service:
+  telemetry:
+    logs:
+      level: debug
+  pipelines:
+    metrics:
+      receivers: [databricks]
+      processors: [batch]
+      exporters: [otlphttp/dynatrace, debug]
