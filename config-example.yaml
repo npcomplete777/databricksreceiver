@@ -1,19 +1,55 @@
 receivers:
   databricks:
+    # Required: Databricks workspace URL
     host: "https://YOUR_WORKSPACE.cloud.databricks.com"
+    
+    # Required: Personal Access Token or Service Principal Token
     token: "YOUR_DATABRICKS_TOKEN_HERE"
+    
+    # Optional: How often to scrape metrics (default: 60s)
     collection_interval: "60s"
     
-    # Cost calculation settings
-    cloud_provider: "azure"  # Options: "azure", "aws", "gcp"
-    dbu_price_per_unit: 0.15  # Price per DBU in USD
+    # ============================================
+    # API Rate Limiting & Performance Tuning
+    # ============================================
+    
+    # Maximum job run details to fetch per scrape (default: 20, max: 100)
+    # Higher = more detailed metrics but more API calls
+    # Set to 0 to disable detailed job metrics
+    max_job_run_details_per_scrape: 20
+    
+    # Maximum task details to fetch per scrape (default: 10, max: 50)
+    # Set to 0 to disable task-level metrics
+    max_task_details_per_scrape: 10
+    
+    # Only fetch details for runs from the last N hours (default: 24)
+    # Reduces API load by ignoring old runs
+    only_recent_runs_hours: 24
+    
+    # ============================================
+    # Cost Calculation Settings
+    # ============================================
+    
+    # Cloud provider for DBU pricing (default: azure)
+    cloud_provider: "azure"  # Options: azure, aws, gcp
+    
+    # Price per DBU in USD (default: 0.15 for Azure)
+    dbu_price_per_unit: 0.15
     
     # Override default DBU rates for specific node types
     node_type_dbu_rates:
+      # Azure examples
       Standard_DS3_v2: 0.75
       Standard_DS4_v2: 1.50
       Standard_E8s_v3: 2.00
-      # Add your specific node types here
+      
+      # AWS examples  
+      # m5.xlarge: 0.69
+      # r5.2xlarge: 1.74
+      
+      # GCP examples
+      # n1-standard-4: 0.75
+      # n2-highmem-8: 1.60
 
 processors:
   batch:
@@ -21,11 +57,17 @@ processors:
     send_batch_size: 100
 
 exporters:
+  # Dynatrace example
   otlphttp/dynatrace:
     endpoint: "https://YOUR_ENV.live.dynatrace.com/api/v2/otlp"
     headers:
-      Authorization: "Api-Token YOUR_DYNATRACE_API_TOKEN_HERE
+      Authorization: "Api-Token YOUR_DYNATRACE_API_TOKEN"
   
+  # Prometheus example
+  # otlphttp/prometheus:
+  #   endpoint: "http://prometheus:9090/api/v1/otlp"
+  
+  # Debug exporter for troubleshooting
   debug:
     verbosity: detailed
     sampling_initial: 5
@@ -34,9 +76,39 @@ exporters:
 service:
   telemetry:
     logs:
-      level: debug
+      level: info  # Options: debug, info, warn, error
+  
   pipelines:
     metrics:
       receivers: [databricks]
       processors: [batch]
       exporters: [otlphttp/dynatrace, debug]
+
+# ============================================
+# Multi-Workspace Example
+# ============================================
+# To monitor multiple Databricks workspaces:
+#
+# receivers:
+#   databricks/prod:
+#     host: "https://prod-workspace.cloud.databricks.com"
+#     token: "${env:DATABRICKS_PROD_TOKEN}"
+#     collection_interval: "60s"
+#     max_job_run_details_per_scrape: 20
+#     
+#   databricks/dev:
+#     host: "https://dev-workspace.cloud.databricks.com"
+#     token: "${env:DATABRICKS_DEV_TOKEN}"
+#     collection_interval: "120s"
+#     max_job_run_details_per_scrape: 10
+#
+# service:
+#   pipelines:
+#     metrics/prod:
+#       receivers: [databricks/prod]
+#       processors: [batch]
+#       exporters: [otlphttp/dynatrace]
+#     metrics/dev:
+#       receivers: [databricks/dev]
+#       processors: [batch]
+#       exporters: [otlphttp/dynatrace]

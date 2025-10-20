@@ -1,0 +1,190 @@
+type: databricks
+
+status:
+  class: receiver
+  stability:
+    alpha: [metrics]
+  distributions: []
+  codeowners:
+    active: [npcomplete777]
+
+resource_attributes: {}
+
+attributes: {}
+
+metrics:
+  databricks.jobs.total:
+    enabled: true
+    description: Total number of configured jobs
+    unit: "1"
+    gauge:
+      value_type: int
+  
+  databricks.job_runs.count:
+    enabled: true
+    description: Number of job runs by state
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [result_state]
+  
+  databricks.job.duration.run:
+    enabled: true
+    description: Complete job run duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [job_name, result_state]
+  
+  databricks.job.duration.queue:
+    enabled: true
+    description: Job queue duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [job_name]
+  
+  databricks.job.duration.setup:
+    enabled: true
+    description: Job setup duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [job_name]
+  
+  databricks.job.duration.execution:
+    enabled: true
+    description: Job execution duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [job_name]
+  
+  databricks.job.duration.cleanup:
+    enabled: true
+    description: Job cleanup duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [job_name]
+  
+  databricks.job.success_rate:
+    enabled: true
+    description: Job success rate percentage
+    unit: "%"
+    gauge:
+      value_type: double
+  
+  databricks.job.cost:
+    enabled: true
+    description: Estimated job cost in dollars
+    unit: USD
+    gauge:
+      value_type: double
+    attributes: [job_name, cluster_id]
+  
+  databricks.tasks.duration:
+    enabled: true
+    description: Task execution duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [task_key, result_state]
+  
+  databricks.tasks.setup_duration:
+    enabled: true
+    description: Task setup duration
+    unit: ms
+    gauge:
+      value_type: int
+    attributes: [task_key]
+  
+  databricks.warehouses.count:
+    enabled: true
+    description: Number of SQL warehouses by state
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [state]
+  
+  databricks.workspace.objects:
+    enabled: true
+    description: Number of workspace objects by type
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [type]
+  
+  databricks.dbfs.storage_bytes:
+    enabled: true
+    description: Total DBFS storage in bytes
+    unit: By
+    gauge:
+      value_type: int
+  
+  databricks.dbfs.file_count:
+    enabled: true
+    description: Number of files and directories in DBFS root
+    unit: "1"
+    gauge:
+      value_type: int
+  
+  databricks.tokens.count:
+    enabled: true
+    description: Number of active tokens
+    unit: "1"
+    gauge:
+      value_type: int
+  
+  databricks.tokens.days_until_expiry:
+    enabled: true
+    description: Days until token expiry
+    unit: d
+    gauge:
+      value_type: int
+    attributes: [comment]
+  
+  databricks.users.count:
+    enabled: true
+    description: Number of users by status
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [status]
+  
+  databricks.groups.count:
+    enabled: true
+    description: Number of groups
+    unit: "1"
+    gauge:
+      value_type: int
+  
+  databricks.groups.members:
+    enabled: true
+    description: Number of members per group
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [group_name]
+  
+  databricks.policies.count:
+    enabled: true
+    description: Number of cluster policies
+    unit: "1"
+    gauge:
+      value_type: int
+  
+  databricks.policies.by_type:
+    enabled: true
+    description: Cluster policies by type
+    unit: "1"
+    gauge:
+      value_type: int
+    attributes: [type]
+  
+  databricks.scraper.errors:
+    enabled: true
+    description: Number of API endpoints that failed during scraping
+    unit: "1"
+    gauge:
+      value_type: int

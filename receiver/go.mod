@@ -1,4 +1,4 @@
-module github.com/yourusername/custom-databricks-receiver/databricksreceiver
+module github.com/npcomplete777/databricksreceiver
 
 go 1.24
 
@@ -7,9 +7,11 @@ toolchain go1.24.7
 require (
 	go.opentelemetry.io/collector/component v1.41.0
 	go.opentelemetry.io/collector/config/confighttp v0.135.0
+	go.opentelemetry.io/collector/config/configopaque v1.41.0
 	go.opentelemetry.io/collector/consumer v1.41.0
 	go.opentelemetry.io/collector/pdata v1.41.0
 	go.opentelemetry.io/collector/receiver v1.41.0
+	go.opentelemetry.io/collector/scraper v0.135.0
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.135.0
 	go.uber.org/zap v1.27.0
 )
@@ -43,7 +45,6 @@ require (
 	go.opentelemetry.io/collector/config/configauth v0.135.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.41.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v1.41.0 // indirect
-	go.opentelemetry.io/collector/config/configopaque v1.41.0 // indirect
 	go.opentelemetry.io/collector/config/configoptional v0.135.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.41.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.41.0 // indirect
@@ -56,7 +57,6 @@ require (
 	go.opentelemetry.io/collector/pdata/pprofile v0.135.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.41.0 // indirect
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.135.0 // indirect
-	go.opentelemetry.io/collector/scraper v0.135.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.12.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect

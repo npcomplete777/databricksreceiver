@@ -5,8 +5,8 @@ dist:
   otelcol_version: 0.135.0
 
 receivers:
-  - gomod: github.com/yourusername/custom-databricks-receiver/databricksreceiver v0.0.0
-    path: ./custom-databricks-receiver/databricksreceiver
+  - gomod: github.com/npcomplete777/databricksreceiver v0.0.0
+    path: ./receiver
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.135.0
