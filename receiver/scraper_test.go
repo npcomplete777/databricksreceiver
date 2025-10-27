@@ -6,10 +6,12 @@ package databricksreceiver
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
 func TestScraperResourceAttributes(t *testing.T) {
@@ -60,7 +62,6 @@ func TestMetricNaming(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Validates naming conventions
 			assert.Contains(t, tt.expectedMetric, "databricks.")
 			assert.NotContains(t, tt.expectedMetric, "_")
 		})
@@ -124,7 +125,6 @@ func TestMetricTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.metricName, func(t *testing.T) {
-			// Documents expected metric types
 			assert.NotEmpty(t, tt.expectedType)
 		})
 	}
@@ -146,9 +146,7 @@ func TestMetricUnits(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.metricName, func(t *testing.T) {
-			// Verify UCUM compliance
 			assert.NotEmpty(t, tt.expectedUnit)
-			// Custom units must be in curly braces
 			if tt.expectedUnit != "By" && tt.expectedUnit != "ms" && tt.expectedUnit != "d" {
 				assert.Contains(t, tt.expectedUnit, "{")
 				assert.Contains(t, tt.expectedUnit, "}")
@@ -169,14 +167,10 @@ func TestScrapeErrorHandling(t *testing.T) {
 
 	scraper := newScraper(cfg, componenttest.NewNopTelemetrySettings())
 	
-	// Scraper should not panic on API errors
 	metrics, err := scraper.scrape(context.Background())
 	
-	// We expect no error from scrape itself (errors are tracked in metrics)
 	require.NoError(t, err)
 	require.NotNil(t, metrics)
-	
-	// Should have at least one resource metric
 	assert.Greater(t, metrics.ResourceMetrics().Len(), 0)
 }
 
@@ -218,7 +212,6 @@ func TestScraperConfiguration(t *testing.T) {
 }
 
 func TestReceiverVersion(t *testing.T) {
-	// Verify version constant exists and is not empty
 	assert.NotEmpty(t, receiverVersion)
 	assert.Equal(t, "0.1.0", receiverVersion)
 }
@@ -242,4 +235,243 @@ func TestNewScraper(t *testing.T) {
 	assert.NotNil(t, scraper.client)
 	assert.NotNil(t, scraper.logger)
 	assert.Equal(t, cfg, scraper.cfg)
+}
+
+// Metric generation tests
+
+func TestAddJobMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	jobs := []Job{
+		{JobID: 1},
+		{JobID: 2},
+	}
+	jobs[0].Settings.Name = "test-job-1"
+	jobs[1].Settings.Name = "test-job-2"
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addJobMetrics(sm, jobs)
+
+	require.Equal(t, 1, sm.Metrics().Len())
+	metric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.job.count", metric.Name())
+	assert.Equal(t, pmetric.MetricTypeSum, metric.Type())
+}
+
+func TestAddJobRunMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	runs := []JobRun{
+		{RunID: 1, RunName: "run-1"},
+		{RunID: 2, RunName: "run-2"},
+		{RunID: 3, RunName: "run-3"},
+	}
+	runs[0].State.ResultState = "SUCCESS"
+	runs[1].State.ResultState = "FAILED"
+	runs[2].State.ResultState = "SUCCESS"
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addJobRunMetrics(sm, runs)
+
+	require.GreaterOrEqual(t, sm.Metrics().Len(), 1)
+	
+	countMetric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.job.run.count", countMetric.Name())
+	assert.Equal(t, pmetric.MetricTypeSum, countMetric.Type())
+	
+	sum := countMetric.Sum()
+	assert.True(t, sum.IsMonotonic())
+}
+
+func TestAddWarehouseMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	warehouses := []SQLWarehouse{
+		{ID: "wh-1", Name: "warehouse-1", State: "RUNNING"},
+		{ID: "wh-2", Name: "warehouse-2", State: "STOPPED"},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addWarehouseMetrics(sm, warehouses)
+
+	require.Equal(t, 1, sm.Metrics().Len())
+	metric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.warehouse.count", metric.Name())
+	assert.Equal(t, "{warehouse}", metric.Unit())
+}
+
+func TestAddWorkspaceMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	objects := []WorkspaceObject{
+		{Path: "/notebook1", ObjectType: "NOTEBOOK"},
+		{Path: "/notebook2", ObjectType: "NOTEBOOK"},
+		{Path: "/dir1", ObjectType: "DIRECTORY"},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addWorkspaceMetrics(sm, objects)
+
+	require.Equal(t, 1, sm.Metrics().Len())
+	metric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.workspace.object.count", metric.Name())
+	assert.Equal(t, "{object}", metric.Unit())
+}
+
+func TestAddDBFSMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	files := []DBFSFile{
+		{Path: "/file1.txt", IsDir: false, FileSize: 1024},
+		{Path: "/file2.txt", IsDir: false, FileSize: 2048},
+		{Path: "/dir1", IsDir: true, FileSize: 0},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addDBFSMetrics(sm, files)
+
+	require.Equal(t, 2, sm.Metrics().Len())
+	
+	storageMetric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.dbfs.storage.usage", storageMetric.Name())
+	assert.Equal(t, "By", storageMetric.Unit())
+	assert.Equal(t, pmetric.MetricTypeGauge, storageMetric.Type())
+	
+	fileCountMetric := sm.Metrics().At(1)
+	assert.Equal(t, "databricks.dbfs.file.count", fileCountMetric.Name())
+}
+
+func TestAddTokenMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	now := time.Now().UnixMilli()
+	tokens := []Token{
+		{TokenID: "token-1", Comment: "test-token", ExpiryTime: now + 86400000},
+		{TokenID: "token-2", Comment: "test-token-2", ExpiryTime: now + 172800000},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addTokenMetrics(sm, tokens)
+
+	require.Equal(t, 2, sm.Metrics().Len())
+	
+	countMetric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.token.count", countMetric.Name())
+	assert.Equal(t, "{token}", countMetric.Unit())
+	
+	expiryMetric := sm.Metrics().At(1)
+	assert.Equal(t, "databricks.token.expiry", expiryMetric.Name())
+	assert.Equal(t, "d", expiryMetric.Unit())
+}
+
+func TestAddUserMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	users := []User{
+		{UserName: "user1@example.com", Active: true},
+		{UserName: "user2@example.com", Active: true},
+		{UserName: "user3@example.com", Active: false},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addUserMetrics(sm, users)
+
+	require.Equal(t, 1, sm.Metrics().Len())
+	metric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.user.count", metric.Name())
+	assert.Equal(t, "{user}", metric.Unit())
+}
+
+func TestAddGroupMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	groups := []Group{
+		{DisplayName: "group1"},
+		{DisplayName: "group2"},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addGroupMetrics(sm, groups)
+
+	require.Equal(t, 2, sm.Metrics().Len())
+	
+	countMetric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.group.count", countMetric.Name())
+	
+	memberMetric := sm.Metrics().At(1)
+	assert.Equal(t, "databricks.group.member.count", memberMetric.Name())
+}
+
+func TestAddPolicyMetrics(t *testing.T) {
+	scraper := &databricksScraper{
+		cfg:    &Config{},
+		logger: componenttest.NewNopTelemetrySettings().Logger,
+	}
+
+	policies := []ClusterPolicy{
+		{PolicyID: "policy-1", Name: "default-policy", IsDefault: true},
+		{PolicyID: "policy-2", Name: "custom-policy", IsDefault: false},
+	}
+
+	metrics := pmetric.NewMetrics()
+	rm := metrics.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+
+	scraper.addPolicyMetrics(sm, policies)
+
+	require.Equal(t, 2, sm.Metrics().Len())
+	
+	countMetric := sm.Metrics().At(0)
+	assert.Equal(t, "databricks.policy.count", countMetric.Name())
+	
+	byTypeMetric := sm.Metrics().At(1)
+	assert.Equal(t, "databricks.policy.by_type.count", byTypeMetric.Name())
 }
