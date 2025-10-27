@@ -1,4 +1,7 @@
-package databricksreceiver
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package databricksreceiver // import "github.com/npcomplete777/databricksreceiver"
 
 import (
 	"context"
@@ -21,9 +24,10 @@ var (
 	typeVal = component.MustNewType(typeStr)
 )
 
-// NewFactory creates a factory for Databricks receiver.
+// NewFactory creates a factory for the Databricks receiver.
 // The receiver collects workspace-level metrics from Databricks REST APIs
-// including jobs, clusters, warehouses, and cost estimates.
+// including jobs, job runs, clusters, warehouses, users, groups, and cost estimates.
+// All metrics follow OpenTelemetry semantic conventions with the databricks.* namespace.
 func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		typeVal,
@@ -33,6 +37,8 @@ func NewFactory() receiver.Factory {
 }
 
 // createMetricsReceiver creates a metrics receiver based on the provided config.
+// It initializes the scraper with the configured collection interval and starts
+// periodic metric collection from the Databricks workspace.
 func createMetricsReceiver(
 	ctx context.Context,
 	settings receiver.Settings,

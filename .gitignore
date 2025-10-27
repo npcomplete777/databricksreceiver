@@ -1,16 +1,30 @@
-   # Binaries
-   otelcol-databricks/
-   
-   # Configs with secrets
-   config.yaml
-   
-   # Go
-   vendor/
-   *.test
-   
-   # IDE
-   .vscode/
-   .idea/
-   
-   # OS
-   .DS_Store
+# Build artifacts
+otelcol-databricks/
+*.backup
+*.backup2
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Config files with secrets (keep example only)
+databricks-config.yaml

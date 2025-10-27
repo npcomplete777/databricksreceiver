@@ -8,183 +8,264 @@ status:
   codeowners:
     active: [npcomplete777]
 
-resource_attributes: {}
+resource_attributes:
+  databricks.workspace.host:
+    description: The Databricks workspace host URL
+    type: string
+    enabled: true
+  databricks.workspace.id:
+    description: The Databricks workspace ID
+    type: string
+    enabled: false
+  service.name:
+    description: Logical name of the service
+    type: string
+    enabled: true
+  service.version:
+    description: Version of the receiver
+    type: string
+    enabled: true
 
-attributes: {}
+attributes:
+  databricks.job.name:
+    description: The name of the Databricks job
+    type: string
+  databricks.job.id:
+    description: The unique identifier of the Databricks job
+    type: string
+  databricks.job.run.id:
+    description: The unique identifier of the job run
+    type: string
+  databricks.job.state:
+    description: The result state of the job or task
+    type: string
+    enum: [SUCCESS, FAILED, TIMEOUT, CANCELED, RUNNING, PENDING, TERMINATING, TERMINATED, SKIPPED, INTERNAL_ERROR]
+  databricks.task.key:
+    description: The unique key identifying a task within a job
+    type: string
+  databricks.warehouse.state:
+    description: The state of the SQL warehouse
+    type: string
+    enum: [RUNNING, STOPPED, STARTING, STOPPING, DELETING, DELETED]
+  databricks.workspace.object.type:
+    description: The type of workspace object
+    type: string
+    enum: [NOTEBOOK, DIRECTORY, LIBRARY, REPO, FILE]
+  databricks.user.status:
+    description: The status of the user account
+    type: string
+    enum: [active, inactive]
+  databricks.group.name:
+    description: The display name of the group
+    type: string
+  databricks.token.comment:
+    description: The comment or description associated with the token
+    type: string
+  databricks.cluster.id:
+    description: The unique identifier of the cluster
+    type: string
+  databricks.policy.type:
+    description: The type of cluster policy
+    type: string
+    enum: [default, custom]
 
 metrics:
-  databricks.jobs.total:
+  databricks.job.count:
     enabled: true
-    description: Total number of configured jobs
-    unit: "1"
-    gauge:
+    description: Total number of jobs in the workspace
+    unit: "{job}"
+    sum:
       value_type: int
+      monotonic: false
+      aggregation_temporality: cumulative
   
-  databricks.job_runs.count:
+  databricks.job.run.count:
     enabled: true
     description: Number of job runs by state
-    unit: "1"
-    gauge:
+    unit: "{run}"
+    sum:
       value_type: int
-    attributes: [result_state]
+      monotonic: true
+      aggregation_temporality: cumulative
+    attributes: [databricks.job.state]
   
-  databricks.job.duration.run:
+  databricks.job.run.duration:
     enabled: true
-    description: Complete job run duration
+    description: Duration of job run from start to completion
     unit: ms
     gauge:
       value_type: int
-    attributes: [job_name, result_state]
+    attributes: [databricks.job.name, databricks.job.state]
   
   databricks.job.duration.queue:
     enabled: true
-    description: Job queue duration
+    description: Time spent in queue before job execution starts
     unit: ms
     gauge:
       value_type: int
-    attributes: [job_name]
+    attributes: [databricks.job.name]
   
   databricks.job.duration.setup:
     enabled: true
-    description: Job setup duration
+    description: Time spent setting up the job execution environment
     unit: ms
     gauge:
       value_type: int
-    attributes: [job_name]
+    attributes: [databricks.job.name]
   
   databricks.job.duration.execution:
     enabled: true
-    description: Job execution duration
+    description: Time spent executing the job workload
     unit: ms
     gauge:
       value_type: int
-    attributes: [job_name]
+    attributes: [databricks.job.name]
   
   databricks.job.duration.cleanup:
     enabled: true
-    description: Job cleanup duration
+    description: Time spent cleaning up after job completion
     unit: ms
     gauge:
       value_type: int
-    attributes: [job_name]
+    attributes: [databricks.job.name]
   
   databricks.job.success_rate:
     enabled: true
-    description: Job success rate percentage
-    unit: "%"
+    description: Percentage of successful job completions
+    unit: "1"
     gauge:
       value_type: double
   
-  databricks.job.cost:
+  databricks.job.cost.estimate:
     enabled: true
-    description: Estimated job cost in dollars
-    unit: USD
+    description: Estimated cost of job execution in USD (custom unit, not UCUM)
+    unit: "{USD}"
     gauge:
       value_type: double
-    attributes: [job_name, cluster_id]
+    attributes: [databricks.job.name, databricks.cluster.id]
   
-  databricks.tasks.duration:
+  databricks.task.duration:
     enabled: true
-    description: Task execution duration
+    description: Duration of task execution
     unit: ms
     gauge:
       value_type: int
-    attributes: [task_key, result_state]
+    attributes: [databricks.task.key, databricks.job.state]
   
-  databricks.tasks.setup_duration:
+  databricks.task.setup_duration:
     enabled: true
-    description: Task setup duration
+    description: Duration of task setup phase
     unit: ms
     gauge:
       value_type: int
-    attributes: [task_key]
+    attributes: [databricks.task.key]
   
-  databricks.warehouses.count:
+  databricks.warehouse.count:
     enabled: true
     description: Number of SQL warehouses by state
-    unit: "1"
-    gauge:
+    unit: "{warehouse}"
+    sum:
       value_type: int
-    attributes: [state]
+      monotonic: false
+      aggregation_temporality: cumulative
+    attributes: [databricks.warehouse.state]
   
-  databricks.workspace.objects:
+  databricks.workspace.object.count:
     enabled: true
     description: Number of workspace objects by type
-    unit: "1"
-    gauge:
+    unit: "{object}"
+    sum:
       value_type: int
-    attributes: [type]
+      monotonic: false
+      aggregation_temporality: cumulative
+    attributes: [databricks.workspace.object.type]
   
-  databricks.dbfs.storage_bytes:
+  databricks.dbfs.storage.usage:
     enabled: true
-    description: Total DBFS storage in bytes
+    description: Total storage consumed in DBFS
     unit: By
     gauge:
       value_type: int
   
-  databricks.dbfs.file_count:
+  databricks.dbfs.file.count:
     enabled: true
-    description: Number of files and directories in DBFS root
-    unit: "1"
-    gauge:
+    description: Number of files and directories in DBFS
+    unit: "{file}"
+    sum:
       value_type: int
+      monotonic: false
+      aggregation_temporality: cumulative
   
-  databricks.tokens.count:
+  databricks.token.count:
     enabled: true
-    description: Number of active tokens
-    unit: "1"
-    gauge:
+    description: Number of active access tokens
+    unit: "{token}"
+    sum:
       value_type: int
+      monotonic: false
+      aggregation_temporality: cumulative
   
-  databricks.tokens.days_until_expiry:
+  databricks.token.expiry:
     enabled: true
-    description: Days until token expiry
+    description: Days remaining until token expiration
     unit: d
     gauge:
       value_type: int
-    attributes: [comment]
+    attributes: [databricks.token.comment]
   
-  databricks.users.count:
+  databricks.user.count:
     enabled: true
     description: Number of users by status
-    unit: "1"
-    gauge:
+    unit: "{user}"
+    sum:
       value_type: int
-    attributes: [status]
+      monotonic: false
+      aggregation_temporality: cumulative
+    attributes: [databricks.user.status]
   
-  databricks.groups.count:
+  databricks.group.count:
     enabled: true
-    description: Number of groups
-    unit: "1"
-    gauge:
+    description: Total number of groups in the workspace
+    unit: "{group}"
+    sum:
       value_type: int
+      monotonic: false
+      aggregation_temporality: cumulative
   
-  databricks.groups.members:
+  databricks.group.member.count:
     enabled: true
-    description: Number of members per group
-    unit: "1"
-    gauge:
+    description: Number of members in each group
+    unit: "{member}"
+    sum:
       value_type: int
-    attributes: [group_name]
+      monotonic: false
+      aggregation_temporality: cumulative
+    attributes: [databricks.group.name]
   
-  databricks.policies.count:
+  databricks.policy.count:
     enabled: true
-    description: Number of cluster policies
-    unit: "1"
-    gauge:
+    description: Total number of cluster policies
+    unit: "{policy}"
+    sum:
       value_type: int
+      monotonic: false
+      aggregation_temporality: cumulative
   
-  databricks.policies.by_type:
+  databricks.policy.by_type.count:
     enabled: true
-    description: Cluster policies by type
-    unit: "1"
-    gauge:
+    description: Number of cluster policies by type
+    unit: "{policy}"
+    sum:
       value_type: int
-    attributes: [type]
+      monotonic: false
+      aggregation_temporality: cumulative
+    attributes: [databricks.policy.type]
   
-  databricks.scraper.errors:
+  databricks.receiver.scrape.errors:
     enabled: true
-    description: Number of API endpoints that failed during scraping
-    unit: "1"
-    gauge:
+    description: Number of API endpoints that failed during the scrape operation
+    unit: "{error}"
+    sum:
       value_type: int
+      monotonic: true
+      aggregation_temporality: cumulative

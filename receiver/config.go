@@ -1,4 +1,7 @@
-package databricksreceiver
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package databricksreceiver // import "github.com/npcomplete777/databricksreceiver"
 
 import (
 	"errors"
@@ -11,30 +14,59 @@ import (
 )
 
 // Config defines the configuration for the Databricks receiver.
+// It extends confighttp.ClientConfig to leverage standard HTTP client configuration
+// and adds Databricks-specific settings for authentication, collection intervals,
+// API rate limiting, and cost calculation.
 type Config struct {
 	confighttp.ClientConfig `mapstructure:",squash"`
 
-	// Databricks workspace URL
+	// Host is the Databricks workspace URL (e.g., "https://your-workspace.cloud.databricks.com").
+	// Must use HTTPS protocol.
 	Host string `mapstructure:"host"`
 
-	// Databricks Personal Access Token or Service Principal token.
-	// Uses configopaque.String to prevent token exposure in logs/debug output.
+	// Token is the Databricks Personal Access Token (starting with 'dapi') or
+	// Service Principal token (starting with 'dkea'). Uses configopaque.String
+	// to prevent token exposure in logs and debug output.
 	Token configopaque.String `mapstructure:"token"`
 
-	// How often to collect metrics from Databricks APIs
+	// CollectionInterval defines how often to scrape metrics from Databricks APIs.
+	// Default: "60s". Format: duration string (e.g., "30s", "2m", "1h").
 	CollectionInterval string `mapstructure:"collection_interval"`
 
-	// API Rate Limiting & Performance
+	// MaxJobRunDetailsPerScrape limits the number of detailed job run API calls per scrape cycle.
+	// This prevents API rate limiting on large workspaces. Set to 0 to disable detailed metrics.
+	// Default: 20. Maximum: 100.
 	MaxJobRunDetailsPerScrape int `mapstructure:"max_job_run_details_per_scrape"`
-	MaxTaskDetailsPerScrape   int `mapstructure:"max_task_details_per_scrape"`
-	OnlyRecentRunsHours       int `mapstructure:"only_recent_runs_hours"`
 
-	// Cost calculation settings
-	CloudProvider    string             `mapstructure:"cloud_provider"` // "azure", "aws", "gcp"
-	DBUPricePerUnit  float64            `mapstructure:"dbu_price_per_unit"`
+	// MaxTaskDetailsPerScrape limits the number of task detail API calls per scrape cycle.
+	// Set to 0 to disable task-level metrics.
+	// Default: 10. Maximum: 50.
+	MaxTaskDetailsPerScrape int `mapstructure:"max_task_details_per_scrape"`
+
+	// OnlyRecentRunsHours limits job run details to runs that started within the last N hours.
+	// Reduces API load by ignoring old completed runs.
+	// Default: 24 hours.
+	OnlyRecentRunsHours int `mapstructure:"only_recent_runs_hours"`
+
+	// CloudProvider specifies the cloud platform for accurate DBU rate calculations.
+	// Valid values: "azure", "aws", "gcp".
+	// Default: "azure".
+	CloudProvider string `mapstructure:"cloud_provider"`
+
+	// DBUPricePerUnit is the cost per Databricks Unit (DBU) in USD.
+	// This varies by cloud provider and contract terms.
+	// Default: 0.15 (Azure standard rate).
+	DBUPricePerUnit float64 `mapstructure:"dbu_price_per_unit"`
+
+	// NodeTypeDBURates provides custom DBU consumption rates per node/instance type.
+	// Overrides default rates for specific compute types.
+	// Format: map[node_type_id]dbu_per_hour
+	// Example: {"Standard_DS3_v2": 0.75, "m5.xlarge": 0.69}
 	NodeTypeDBURates map[string]float64 `mapstructure:"node_type_dbu_rates"`
 }
 
+// Validate checks the receiver configuration for errors and ensures all required
+// fields are properly set according to Databricks API and security requirements.
 func (cfg *Config) Validate() error {
 	if cfg.Host == "" {
 		return errors.New("host is required")
@@ -78,6 +110,9 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
+// createDefaultConfig returns a Config with sensible defaults for Databricks monitoring.
+// These defaults are optimized for typical enterprise workspaces and can be overridden
+// in the receiver configuration.
 func createDefaultConfig() component.Config {
 	return &Config{
 		ClientConfig:              confighttp.NewDefaultClientConfig(),
@@ -91,7 +126,9 @@ func createDefaultConfig() component.Config {
 	}
 }
 
-// getDefaultDBURates returns default DBU rates per node type for each cloud provider
+// getDefaultDBURates returns default DBU consumption rates per node type for each cloud provider.
+// These rates are based on Databricks pricing documentation and represent typical consumption patterns.
+// Actual rates may vary based on contract terms and should be customized via configuration.
 func getDefaultDBURates(provider string) map[string]float64 {
 	switch provider {
 	case "azure":
